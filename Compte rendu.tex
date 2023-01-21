@@ -110,7 +110,14 @@ L'équation de la chaleur devient alors :
     \label{equation de la chaleur}
 \end{equation}
 
+On peut aussi écrire une condition a la surface de la sphère, représentant un échange convectif :
+\[
+\phi = h(\theta)(T-T_\infty)
+\] 
+Avec $h(\theta)$ le coéficient de convection exprimé précédement.
 
+
+\newpage
 \section{Choix du système de coordonnées et du maillage}
 \subsection{Comparaison des systèmes de coordonnées cartésiennes et sphériques}
 \subsubsection{Coordonnées cartésiennes}
@@ -156,28 +163,122 @@ L'équation de la chaleur Eq.\eqref{equation de la chaleur} utlise l'opérateur 
 
 En coordonnées sphérique, cet opératreur s'écrit alors :
 \begin{equation}
-     \Delta f={\frac {\partial ^{2}f}{\partial r^{2}}}+{\frac {2}{r}}{\frac {\partial f}{\partial r}}+{\frac {1}{r^{2}}}{\frac {\partial ^{2}f}{\partial \theta ^{2}}}+{\frac {1}{r^{2}\tan \theta }}{\frac {\partial f}{\partial \theta }}+{\frac {1}{r^{2}\sin ^{2}\theta }}{\frac {\partial ^{2}f}{\partial \varphi ^{2}}}
+     \Delta f={\frac {\partial ^{2}f}{\partial r^{2}}}+{\frac {1}{r}}{\frac {\partial f}{\partial r}}+{\frac {1}{r^{2}}}{\frac {\partial ^{2}f}{\partial \theta ^{2}}}+{\frac {1}{r^{2}\tan \theta }}{\frac {\partial f}{\partial \theta }}+{\frac {1}{r^{2}\sin ^{2}\theta }}{\frac {\partial ^{2}f}{\partial \varphi ^{2}}}
 \end{equation}
 
 L'équation de la chaleur Eq.\eqref{equation de la chaleur} s'écrit alors :
 \begin{equation}
     \rho C_p \frac{ \partial T}{\partial t}  = \lambda \left( 
-    {\frac {\partial ^{2}T}{\partial r^{2}}}+{\frac {2}{r}}{\frac {\partial T}{\partial r}}+{\frac {1}{r^{2}}}{\frac {\partial ^{2}T}{\partial \theta ^{2}}}+{\frac {1}{r^{2}\tan \theta }}{\frac {\partial T}{\partial \theta }}+{\frac {1}{r^{2}\sin ^{2}\theta }}{\frac {\partial ^{2}T}{\partial \varphi ^{2}}} \right)      
+    {\frac {\partial ^{2}T}{\partial r^{2}}}+{\frac {1}{r}}{\frac {\partial T}{\partial r}}+{\frac {1}{r^{2}}}{\frac {\partial ^{2}T}{\partial \theta ^{2}}}+{\frac {1}{r^{2}\tan \theta }}{\frac {\partial T}{\partial \theta }}+{\frac {1}{r^{2}\sin ^{2}\theta }}{\frac {\partial ^{2}T}{\partial \varphi ^{2}}} \right)      
 \end{equation}
-Dans la suite du problème on utilisera la constante $\alpha = \frac{\lambda}{\rho C_p}$ afin de simplifier l'écriture de l'équation ci-audessus.
+Dans la suite du problème on utilisera la constante $\alpha = \frac{\lambda}{\rho C_p}$ afin de simplifier l'écriture de l'équation ci-dessus.
 
 \subsection{Maillage de la sphère}
+Une sphère peut être mailler de plusieurs mainères dans un espace 3D, certains maillage favoriseront l'uniformité de la taille des mailles comme les maillages quandrangulaires ou en géode par triangulation tandis que d'autres faciliterons la résolution numérique du problème comme le maillage en sphère UV (maillage en faces rectangulaires, formé par des segments assimilables a des lignes de longitude et de latitude sur un globe).
 
+\begin{figure}[H]
+    \centering
+    \textbf{AJOUTER PETIT SPHERE QUANDRAGULAIRE, GEODE(ISO) et UV}
+\end{figure}
+
+On utilisera dans le cadre de notre simulation un maillage UV de la sphère, ce modèle se prettant très bien au systèe de coordonnées sphérique. Cela simplifiera les calculs et l'implémentation des équations.
+
+Les paramètres pour construire ce maillage seront alors \texttt{Nr, Ntheta, Nphi}, représentant respectivement le nombre de mailles dans la direction $r$, la direction $\theta$, et la direction $\phi$ 
+
+On repèrera par le triplet $(i,j,k)$ les coordonées du noeud du maillage de la sphère. 
+
+\newpage
 \section{Discrétisation du problème} 
+La méthode utilisée ici est la méthode des différences finies. On choisi d'utiliser l'ordre 1 afin de simplifier les expressions des termes de l'équation de la chaleur, un ordre supérieur pourra être utilisé afin d'augmenter la précision et la stabilité si nécessaire.
 \subsection{Discrétisation de l'équation de la chaleur}
+On rapelle l'équation de la chaleur utilisée :
+
+\begin{equation}
+    \frac{ \partial T}{\partial t}  =  \alpha \nabla^2 T
+\end{equation}
+
+Et donc en coordonées sphériques, en prenant en compte l'invariance du champ de température par rapport à $\phi$  :
+
+\begin{equation}
+    \frac{ \partial T}{\partial t}  = \alpha \left( 
+    {\frac {\partial ^{2}T}{\partial r^{2}}}+{\frac {1}{r}}{\frac {\partial T}{\partial r}}+{\frac {1}{r^{2}}}{\frac {\partial ^{2}T}{\partial \theta ^{2}}}+{\frac {1}{r^{2}\tan \theta }}{\frac {\partial T}{\partial \theta }} \right)      
+\end{equation}
+
+On cherceh a exprimer $T^n $ en fonction uniquement de $T^{n-1}$ On utilise alors un schéma arrière temporel. : 
+
+\begin{equation}
+    \frac{ \partial T}{\partial t} \rightarrow  \frac{T^n - T^{n-1}}{\Delta t} 
+\end{equation}
+
+On discrétise ensuite avec un schéma centré les termes issus du laplacien de la température :
+
+
+\begin{equation}
+    \frac{ \partial ^2 T}{\partial r^2} \rightarrow 
+    \frac{T_{i+1,j,k}^{n-1} - 2 T_{i,j,k}^{n-1} + T_{i-1,j,k}^{n-1}}{\Delta r^2}
+\end{equation}
+
+\begin{equation}
+    \frac{1}{r}\frac{ \partial T}{\partial r} \rightarrow 
+    \frac{1}{r_i}\frac{T_{i+1,j,k}^{n-1} - T_{i-1,j,k}^{n-1}}{\Delta r}
+\end{equation}
+
+\begin{equation}
+    \frac{1}{r^2}\frac{ \partial^2 T}{\partial \theta^2} \rightarrow 
+    \frac{1}{r_i^2}\frac{T_{i,j+1,k}^{n-1} - 2 T_{i,j,k}^{n-1} + T_{i,j-1,k}^{n-1}}{\Delta \theta^2}
+\end{equation}
+
+\begin{equation}
+    \frac{1}{r^2 \tan \theta}\frac{ \partial T}{\partial \theta} \rightarrow 
+    \frac{1}{r_i^2 \tan \theta_j }\frac{T_{i,j+1,k}^{n-1} - T_{i,j-1,k}^{n-1}}{2\Delta \theta}
+\end{equation}
+
+
+On peut alors exprimer $T^n$ :
+
+\begin{multline}
+    T^n = \alpha \Delta t  \left( \frac{T_{i+1,j,k}^{n-1} - 2 T_{i,j,k}^{n-1} + T_{i-1,j,k}^{n-1}}{\Delta r^2}+\frac{1}{r_i}\frac{T_{i+1,j,k}^{n-1} - T_{i-1,j,k}^{n-1}}{\Delta r} + \frac{1}{r_i^2}\frac{T_{i,j+1,k}^{n-1} - 2 T_{i,j,k}^{n-1} + T_{i,j-1,k}^{n-1}}{\Delta \theta^2}\right. \\
+    +\left.\frac{1}{r_i^2 \tan \theta_j }\frac{T_{i,j+1,k}^{n-1} - T_{i,j-1,k}^{n-1}}{2\Delta \theta}\right)  + T^{n-1}
+    \label{discretisation Gal}
+\end{multline}
+
+
 \subsection{Discrétisation des condition aux limites}
+
+On doit par la suite discrétiser notre condition à la surface de la sphère que l'on rappelle être :
+\begin{equation}
+    \phi = h(\theta)(T - T_{\infty})
+\end{equation}
+
+On a donc par la loi de Fourier :
+\begin{equation}
+    h(\theta)(T(r = a) - T_\infty) = -\lambda \left.\frac{ \partial T}{\partial r}\right|_{r=a} 
+\end{equation}
+On a alors, par les discrétisation des dérivées partielles précédentes :
+\begin{equation}
+    T_{i,j,k}^n = \left(h(\theta) + \frac{\lambda}{\Delta r}\right)^{-1} \cdot \left( h(\theta) T_\infty + \lambda \frac{T_{i-1,j,k}}{\Delta r}\right)
+    \label{discretisation limite}
+\end{equation}
+
+Les équations Eq.\eqref{discretisation Gal}et Eq.\eqref{discretisation limite} nous permmettrent alors d'exprimer, en tout point de la sphère, la température en fonction des températures de la sphère l'instant précédent
+
 
 
 
 \newpage
 \section{Simulation Python} 
-Petite introduction sur pourquoi on a utiliser python pour faire cette simulation
+Pour implémenter une telle simulation, nous avons utilisé Python comme language de programmation pour sa facilitée et sa capacitée a visualiser des données à l'aide de bibliothèques simples. La capacitée à executer du code sans compiler nous a aussi permis d'itérerplus rapidement et de débugger simplement le code.
 \subsection{Structure du code}
+Le code est composé de quelques fonctions simples et notre situation ne semblait pas demander a introduire de la programation orientée objet, car nous avons décidé de représenter les maillages et les simualations commme de simples tableaux \texttt{numpy}. 
+
+Ainsi, on commence dabord par fixer nos constantes de la simulation comme les paramètres de maille, les constantes du matériau considéré, les températures ($T_0$ et $T_\infty$ ), le facteur de convection, etc\dots
+
+On construit ensuite le maillage de la sphère.
+
+Enfin on itère la simulation en stockant chaques maillages de la simulaiton dans une liste.
+
+Finalement, on affiche cette simulation et on enregistre une animation de celle-ci.
+
 \subsection{Implémentation du maillage}
 \subsubsection{Maillage et simulation}
 explication du type mesh

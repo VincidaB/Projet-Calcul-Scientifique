@@ -2,7 +2,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation
-import pandas as pd
 import math
 import sys
 
@@ -20,7 +19,7 @@ Nphi = 2    #nombre de mailles selon e_phi
 
 rho = 8.9e3 #Kg.m^-3
 Cp = 0.385e3 #J.Kg^-1
-Lambda = 200
+Lambda = 400
 
 Tinfty = 450 #Température a l'infini
 
@@ -71,18 +70,14 @@ def compute_next_step(p_mesh, dt):
         # on passe plusieurs fois sur le node 0,0,0 (le centre de la sphère)
         if i == 0:
 
-            #r = (i) * Delta_r
+            
             for j in range(Ntheta):
-                #theta = (j+1.5) * Delta_theta
                 for k in range(Nphi):
-                    #phi = (k+1) * Delta_phi
                     sumtheta = 0
-                    sumthetaplus = 0
-                    sumthetaplusplus = 0
+                    
                     for m in range(Ntheta):
                         sumtheta += p_mesh[1,m,k,3]
-                        sumthetaplus += p_mesh[2,m,k,3]
-                        sumthetaplusplus += p_mesh[3,m,k,3]
+                        
                         
                         
                     #n_mesh[i,j,k,3] = 450
@@ -95,7 +90,7 @@ def compute_next_step(p_mesh, dt):
 
 
         elif i == Nr - 1:
-            r = (i+1) * Delta_r
+            r = (i) * Delta_r
             for j in range(Ntheta):
                 theta = (j+1.5) * Delta_theta
                 for k in range(Nphi):
@@ -159,7 +154,7 @@ def simulation():
     dt = 0.000001
     meshes = []
     meshes.append(maillage)
-    for i in range(100000):
+    for i in range(25000):
         print(i)
         meshes.append(compute_next_step(meshes[i], dt))
     return meshes
@@ -200,7 +195,7 @@ print(cmap_inferno(norm(mesh_c[:,:,:,3].ravel())))
 
 graph = ax.scatter(mesh_c[:,:,:,0].ravel(), mesh_c[:,:,:,1].ravel(), mesh_c[:,:,:,2].ravel())
 #graph = ax.scatter(mesh_c[:,:,:,0].ravel(), mesh_c[:,:,:,1].ravel(), mesh_c[:,:,:,2].ravel(),c = mesh_c[:,:,:,3], cmap= "inferno")
-ani = matplotlib.animation.FuncAnimation(fig, update_graph,999, blit=False)
+ani = matplotlib.animation.FuncAnimation(fig, update_graph,249, blit=False)
 
 plt.show()
 ani.save("girophare.gif", fps=1)
