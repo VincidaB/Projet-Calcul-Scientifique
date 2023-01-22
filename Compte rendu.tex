@@ -18,9 +18,10 @@
 \usepackage[b]{esvect}      %For better vectors
 \usepackage{float}
 \usepackage{tikz}
-
-
 \usepackage{pdflscape}
+
+\usepackage{pythonhighlight}
+
 \usepackage{hyperref}
 \hypersetup{
     colorlinks,
@@ -107,7 +108,7 @@ Dans notre cas, cette équation peut être simplifiée. On a premièrement $u = 
 L'équation de la chaleur devient alors :
 \begin{equation}
     \rho C_p   \frac{ \partial T}{\partial t} = \lambda\nabla^2 T
-    \label{equation de la chaleur}
+    \label{equation_de_la_chaleur}
 \end{equation}
 
 On peut aussi écrire une condition a la surface de la sphère, représentant un échange convectif :
@@ -149,13 +150,16 @@ Pour passer des coordonées cartésiennes aux coordonées sphériques on utilise
 De la même manière, pour passer des coordonnées sphériques aux coordonnées cartésiennes on utilise les équations suivantes :
 \begin{equation}
     \begin{cases}
-        x&=r \sin \theta \cos \varphi \\y&=r \sin \theta \sin \varphi \\z&=r \cos \theta 
+        x&=r \sin \theta \cos \varphi \\
+        y&=r \sin \theta \sin \varphi \\
+        z&=r \cos \theta 
     \end{cases}
+    \label{Polar coord}
 \end{equation}
 
 \subsection{Réécriture des équations adaptée au nouveau système de coordonnées}
  
-L'équation de la chaleur Eq.\eqref{equation de la chaleur} utlise l'opérateur laplacien ($\Delta = \nabla^2$). Cet opérateur s'écrit en coordonnées cartésiennes :
+L'équation de la chaleur Eq.\eqref{equation_de_la_chaleur} utlise l'opérateur laplacien ($\Delta = \nabla^2$). Cet opérateur s'écrit en coordonnées cartésiennes :
 
 \begin{equation}
     \Delta f = {\frac {\partial ^{2}f }{\partial x^{2}}}+{\frac {\partial ^{2}f }{\partial y^{2}}}+{\frac {\partial ^{2}f }{\partial z^{2}}}
@@ -166,7 +170,7 @@ En coordonnées sphérique, cet opératreur s'écrit alors :
      \Delta f={\frac {\partial ^{2}f}{\partial r^{2}}}+{\frac {1}{r}}{\frac {\partial f}{\partial r}}+{\frac {1}{r^{2}}}{\frac {\partial ^{2}f}{\partial \theta ^{2}}}+{\frac {1}{r^{2}\tan \theta }}{\frac {\partial f}{\partial \theta }}+{\frac {1}{r^{2}\sin ^{2}\theta }}{\frac {\partial ^{2}f}{\partial \varphi ^{2}}}
 \end{equation}
 
-L'équation de la chaleur Eq.\eqref{equation de la chaleur} s'écrit alors :
+L'équation de la chaleur Eq.\eqref{equation_de_la_chaleur} s'écrit alors :
 \begin{equation}
     \rho C_p \frac{ \partial T}{\partial t}  = \lambda \left( 
     {\frac {\partial ^{2}T}{\partial r^{2}}}+{\frac {1}{r}}{\frac {\partial T}{\partial r}}+{\frac {1}{r^{2}}}{\frac {\partial ^{2}T}{\partial \theta ^{2}}}+{\frac {1}{r^{2}\tan \theta }}{\frac {\partial T}{\partial \theta }}+{\frac {1}{r^{2}\sin ^{2}\theta }}{\frac {\partial ^{2}T}{\partial \varphi ^{2}}} \right)      
@@ -280,16 +284,143 @@ Enfin on itère la simulation en stockant chaques maillages de la simulaiton dan
 Finalement, on affiche cette simulation et on enregistre une animation de celle-ci.
 
 \subsection{Implémentation du maillage}
-\subsubsection{Maillage et simulation}
-explication du type mesh
+ \subsubsection{Maillage et liste de maillages}
+Chaque maillage de a sphère est représenté par une tableau \texttt{numpyarray} de dimmension 4. Les 3 premières coordonnées sont utilisées pour la position (soit $x,y,z$ soit $r, \theta, \phi$ ) tandis que la quatrième est utilisée pour représenté la température de ce noeud. Ainsi on créée un objet \texttt{maillage} de la manière suivante :
 
-explication de la list de meshes qui est alors une simulation
-\subsubsection{Implémentation des maillages et des simulations}
+
+\begin{python}
+    maillage = np.zeros((Nr,Ntheta,Nphi,4))
+    maillage[:,:,:,3] = T0                  #set every node temperature to T_0
+    for i in range(Nr):
+        for j in range(Ntheta):
+            for k in range(Nphi):
+                maillage[i,j,k,:3] = ((i)*a/(Nr), (j+0.5)*math.pi/Ntheta, 2*k*math.pi/Nphi)
+
+\end{python}
+Les coordonées sont alors données par Eq.\eqref{Polar coord}. On initialise tous les noeuds à la température $T_0$, tempréature initiale du thermocouple supposé uniforme. 
+
+On introduit aussi une fonction permettant d'obtenir le maillage constituté des coordonnées caertésiennes de chaque noeud afin de par la suite pouvoir visualiser ce mailage :
+\begin{python}
+    def polar_to_cartesian(polar):
+        cart = np.copy(polar)
+        cart[:,:,:,0] = polar[:,:,:,0] * np.sin(polar[:,:,:,1])*np.cos(polar[:,:,:,2])
+        cart[:,:,:,1] = polar[:,:,:,0] * np.sin(polar[:,:,:,1])*np.sin(polar[:,:,:,2])
+        cart[:,:,:,2] = polar[:,:,:,0] * np.cos(polar[:,:,:,1])
+        return cart
+\end{python}
+
+On construit alors une simulation comme étant une liste de différents maillage (les maillages sont physiquement identiques mais la valeur de la température à chaque noeud est différente).
+Cela peut se voir dans la fonction \texttt{simulation} qui ajoute a la liste de maillage, le nouveau maillage calculé par la fonction \texttt{compute\_next\_step}:
+
+\begin{python}
+    def simulation():
+    dt = 0.000001
+    meshes = []
+    meshes.append(maillage)
+    for i in range(25000):
+        print(i)
+        meshes.append(compute_next_step(meshes[i], dt))
+    return meshes
+\end{python}
+
+\texttt{meshes} est alors l'ensemble des maillage de notre simulation.
+
+\subsubsection{Visualisation des maillages et des simulations}
+On a décidé d'utiliser la librairie \texttt{matplotlib} afin de visualiser nos données car cette librairie peut à la fois permettre de réaliser des visualisation 3D et de simples graphs 2D.
+
+\begin{python}
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.animation
+
+    fig = plt.figure()
+    fig.set_figheight(15)
+    fig.set_figwidth(15)
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.axes.set_xlim3d(left=-0.004, right=0.004) 
+    ax.axes.set_ylim3d(bottom=-0.004, top=0.004)
+    ax.axes.set_zlim3d(bottom=-0.004, top=0.004)
+
+    norm = matplotlib.colors.Normalize(vmin=380, vmax=451)
+\end{python}
+
+On commence par intialiser une figure aec une projection de type '3d'. On fixe alors les limites de l'affichage. Et enfin, on créé la variable \texttt{norm} qui sera utilisé lors de l'afichage des températures par une plage de couleurs.
+
+On doit alors, pour afficher une animation des points qui changent de couleur au cours du temps, créer une fonction qui met a jour la visualisation, et change les données envoyés à \texttt{matplotlib} :
+\begin{python}
+    def update_graph(num):
+        factor = 100
+        global k
+        mesh_c = polar_to_cartesian((simulation_meshes[num*factor]))
+        graph._offsets3d = mesh_c[:,:,:,0].ravel(), mesh_c[:,:,:,1].ravel(), mesh_c[:,:,:,2].ravel()
+        
+        graph.set_facecolor(cmap_inferno(norm(mesh_c[:,:,:,3].ravel())))
+            
+        title.set_text('3D Test, num={}'.format(num*factor))
+        return title, graph, 
+\end{python}
+
+Le paramètre \texttt{factor} est utlisé pour n'afficher que certaines étapes de la simulation, ici toutes les 100 mises a jours du maillage. Dans le cas contraire, la visualisation de l'entièreté de la simulation prendrait des heures.
+
+On peut alors afficher la simulation de la manière suivante :
+\begin{python}
+    mesh_c = polar_to_cartesian((simulation_meshes[0]))
+    graph = ax.scatter(mesh_c[:,:,:,0].ravel(), mesh_c[:,:,:,1].ravel(), mesh_c[:,:,:,2].ravel())
+    ani = matplotlib.animation.FuncAnimation(fig, update_graph,249, blit=False)
+
+    plt.show()
+    ani.save("simulation.gif", fps=10)
+\end{python}
+
+Ici, 249 représente la dernière itération de la simulation que l'on souhaite voir (qui sera multiplié par \texttt{factor} et donc creprésente ici l'itération 24900). On sauvegarde aussi l'animation créé pour de prochaines visualisations.
+
+
 \subsection{Implémentation des équations}
+Les équations discutés dans les parties précédentes sont implémentés dans la fonction \texttt{compute\_next\_step}. Cette fonction prend en paramètre le maillage au temps $n$ et le pas temporel \texttt{dt} et renvoit le nouveau maillage au temps $n+1$.
+
+Dans l'extrais de code qui suit, certaines parties ont été omises afin d'en facilité la lecture. en effet on remarque que plusieurs cas selon la valeur de \texttt{i} ont été disociés. Cela est dû au fait que l'expression du laplacien en différente en 0 et la présence de la condition à la surface de la sphère (en $r=a$). On remarque aussi que des distinctions de cas ont été faites selon la valeur de \texttt{j}. Cela provient des problèmes d'indices ; les indices ne forment pas une boucle lorsque que l'on atteint le dernier indice.
+
+\newpage
+\begin{python}
+def compute_next_step(p_mesh, dt):
+    Nr, Ntheta, Nphi, _ = np.shape(p_mesh)
+    n_mesh = np.copy(p_mesh)
+
+    Delta_r = a / Nr
+    Delta_theta = math.pi / Ntheta
+    Delta_phi = 2 * math.pi / Nphi
+    for i in range(0, Nr):
+        if i == 0:
+            ...
+        elif i == Nr - 1:
+            ...     
+        else:
+            r = i * Delta_r
+            for j in range(Ntheta):
+                theta = (j+1.5) * Delta_theta
+                if j == 0:
+                    ...
+                    
+                elif j == Ntheta - 1:
+                    ...
+                                        
+                else:
+                    for k in range(Nphi):
+                        phi = (k+1) * Delta_phi
+                        n_mesh[i,j,k,3] = alpha * dt * 
+                    ((p_mesh[i+1,j,k,3]-2*p_mesh[i,j,k,3]+p_mesh[i-1,j,k,3])/(Delta_r**2)
+                    + 1/r*(p_mesh[i+1,j,k,3]-p_mesh[i-1,j,k,3]) / Delta_r
++ 1/r**2 * (p_mesh[i,j+1,k,3] - 2 * p_mesh[i,j,k,3] + p_mesh[i,j-1,k,3]) / (Delta_theta**2)
++ 1/(r**2 * math.tan(theta)) * p_mesh[i,j+1,k,3] - p_mesh[i,j-1,k,3] / (2* Delta_theta)) 
++ p_mesh[i,j,k,3]
+                        
+    return n_mesh
+\end{python}
+
 \subsection{Simulations}
 \subsubsection{Choix des valeurs des paramètre}
 Choix des pas, des dimensions, de Delta t, du temps de simulation
-\subsubsection{Test de l'influence de certains paramètres}
+\subsubsection{Test de l'influence de certains paramertres}
 \subsubsection{Simulations}
 
 \newpage
@@ -297,5 +428,4 @@ Choix des pas, des dimensions, de Delta t, du temps de simulation
 Conclure sur la méthode utilisé, l'implémentation, la convaincance des résultats.
 
 Finir sur ce que cela nous a apris, la facilitée d'implémenter vs la difficultée à discrétiser le probblème et choisir la valeur des paramètres
-
 \end{document}
